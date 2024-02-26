@@ -321,12 +321,42 @@ func TestGetContent(t *testing.T) {
 				"bar/something2.yaml": []byte("something2"),
 			},
 		},
+		{
+			name: "globbing subdirectories",
+			directoryStructure: fsNode{
+				isDir: true,
+				name:  "globbed",
+				children: []fsNode{
+					{
+						name:     "something.yaml",
+						contents: "foo",
+					},
+					{
+						name:     ".fleetignore",
+						contents: "foo/*",
+					},
+					{
+						name:  "foo",
+						isDir: true,
+						children: []fsNode{
+							{
+								name:     "ignore-always.yaml",
+								contents: "will be ignored",
+							},
+							{
+								name:     "something.yaml",
+								contents: "will be ignored too",
+							},
+						},
+					},
+				},
+			},
+			expectedFiles: map[string][]byte{
+				"something.yaml": []byte("foo"),
+			},
+		},
 	}
-
-	base, err := os.MkdirTemp("", "test-fleet")
-	require.NoError(t, err)
-
-	defer os.RemoveAll(base)
+	base := t.TempDir()
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -336,10 +366,7 @@ func TestGetContent(t *testing.T) {
 			files, err := bundlereader.GetContent(context.Background(), root, root, "", bundlereader.Auth{}, false)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(c.expectedFiles), len(files))
-			for k, v := range c.expectedFiles {
-				assert.Equal(t, v, files[k])
-			}
+			assert.Equal(t, c.expectedFiles, files)
 		})
 	}
 }

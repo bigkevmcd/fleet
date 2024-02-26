@@ -39,15 +39,24 @@ type ignoreTree struct {
 // isIgnored checks whether any path within xt matches path, and returns true if so.
 func (xt *ignoreTree) isIgnored(path string) (bool, error) {
 	steps := xt.findNode(path, false, nil)
-
 	for _, step := range steps {
 		for _, ignoredPath := range step.ignoredPaths {
+			trimmed, err := filepath.Rel(xt.path+"/", path)
+			if err != nil {
+				return false, err
+			}
+
+			globmatch, err := filepath.Match(ignoredPath, trimmed)
+			if err != nil {
+				return false, err
+			}
+
 			toIgnore, err := filepath.Match(ignoredPath, filepath.Base(path))
 			if err != nil {
 				return false, err
 			}
 
-			if toIgnore {
+			if toIgnore || globmatch {
 				return true, nil
 			}
 		}
